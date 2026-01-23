@@ -1,4 +1,4 @@
-name: Deploy Frontend to gh-pages (NO CACHE)
+name: Deploy Frontend to gh-pages
 
 on:
   push:
@@ -21,18 +21,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node (NO CACHE)
+      - name: Setup Node (no cache to avoid failure)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Debug structure
+      - name: Debug frontend structure + lockfiles
         run: |
-          echo "WORKFLOWS:"
-          ls -la .github/workflows || true
-          echo "FRONTEND:"
+          echo "Repo root:"
+          ls -la
+          echo "----- frontend:"
           ls -la frontend || true
-          echo "LOCKFILES:"
+          echo "----- lockfiles:"
           find frontend -maxdepth 2 -type f \( -name "package-lock.json" -o -name "pnpm-lock.yaml" -o -name "yarn.lock" \) -print || true
 
       - name: Install Dependencies
@@ -53,6 +53,7 @@ jobs:
 
       - name: Debug dist output
         run: |
+          echo "----- dist:"
           ls -la ./frontend/dist
           test -f ./frontend/dist/index.html && echo "index.html OK" || (echo "index.html MISSING" && exit 1)
 
