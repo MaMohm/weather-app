@@ -1,0 +1,15 @@
+[Unit]
+Description=Weather App Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/var/www/weather-backend/current
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=10
+EnvironmentFile=/var/www/weather-backend/shared/backend.env
+
+[Install]
+WantedBy=multi-user.target
