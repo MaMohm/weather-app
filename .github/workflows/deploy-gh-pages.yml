@@ -1,4 +1,4 @@
-name: ZZ Deploy Frontend to gh-pages (NO CACHE)
+name: Deploy Frontend to gh-pages (NO CACHE)
 
 on:
   push:
@@ -18,18 +18,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node (NO CACHE)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Print workflow + tree (proof)
+      - name: Debug structure
         run: |
-          echo "WORKFLOW FILES:"
+          echo "WORKFLOWS:"
           ls -la .github/workflows || true
-          echo "FRONTEND TREE:"
+          echo "FRONTEND:"
           ls -la frontend || true
+          echo "LOCKFILES:"
+          find frontend -maxdepth 2 -type f \( -name "package-lock.json" -o -name "pnpm-lock.yaml" -o -name "yarn.lock" \) -print || true
 
       - name: Install Dependencies
         working-directory: ./frontend
@@ -41,13 +45,18 @@ jobs:
         env:
           VITE_API_BASE_URL: https://api.marwandev.com
 
-      - name: SPA + Pages fixes
+      - name: SPA + Pages fixes (404.html + .nojekyll)
         run: |
           test -f ./frontend/dist/index.html
           cp ./frontend/dist/index.html ./frontend/dist/404.html
           touch ./frontend/dist/.nojekyll
 
-      - name: Deploy to gh-pages
+      - name: Debug dist output
+        run: |
+          ls -la ./frontend/dist
+          test -f ./frontend/dist/index.html && echo "index.html OK" || (echo "index.html MISSING" && exit 1)
+
+      - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
