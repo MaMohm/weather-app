@@ -28,11 +28,45 @@ fi
 echo "Updating 'current' symlink..."
 ln -sfn "$NEW_RELEASE_PATH" "$CURRENT_PATH"
 
-# 3. Restart the systemd service
+# 2.5 Setup Shared Env and Configs
+echo "Configuring Environment and Services..."
+mkdir -p "$DEPLOY_ROOT/shared"
+# Move the .env file uploaded by SCP to the shared location
+if [ -f "$NEW_RELEASE_PATH/../backend/.env" ]; then
+    mv "$NEW_RELEASE_PATH/../backend/.env" "$DEPLOY_ROOT/shared/backend.env"
+elif [ -f "$NEW_RELEASE_PATH/.env" ]; then
+    mv "$NEW_RELEASE_PATH/.env" "$DEPLOY_ROOT/shared/backend.env"
+fi
+
+# 3. Systemd Setup
+echo "Configuring Systemd..."
+# Check if service file exists in release
+if [ -f "$NEW_RELEASE_PATH/deploy/weather-backend.service" ]; then
+    sudo cp "$NEW_RELEASE_PATH/deploy/weather-backend.service" /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable weather-backend
+fi
+
+# 4. Nginx Setup
+echo "Configuring Nginx..."
+if [ -f "$NEW_RELEASE_PATH/deploy/nginx-api.conf" ]; then
+    sudo cp "$NEW_RELEASE_PATH/deploy/nginx-api.conf" /etc/nginx/sites-available/api.marwandev.com
+    # Link only if not exists or force it? Force it to ensure it points to available.
+    sudo ln -sf /etc/nginx/sites-available/api.marwandev.com /etc/nginx/sites-enabled/
+    
+    # Test Nginx before restart
+    if sudo nginx -t; then
+        sudo systemctl reload nginx
+    else
+        echo "WARNING: Nginx config check failed. Skipping reload."
+    fi
+fi
+
+# 5. Restart the systemd service
 echo "Restarting weather-backend service..."
 sudo systemctl restart weather-backend
 
-# 4. Optional: Clean up old releases (keep last 5)
+# 6. Optional: Clean up old releases (keep last 5)
 echo "Cleaning up old releases..."
 cd "$DEPLOY_ROOT/releases"
 ls -dt * | tail -n +6 | xargs -r rm -rf

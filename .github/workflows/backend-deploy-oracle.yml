@@ -40,9 +40,10 @@ jobs:
           # Actually, prompts said "deploy folder".
           # We'll upload the artifact content to a new release folder.
 
-      - name: Create Release Timestamp
-        id: timestamp
-        run: echo "timestamp=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env
+          echo "PORT=3002" >> backend/.env
 
       - name: Deploy to Server via SSH
         uses: appleboy/scp-action@master
@@ -51,7 +52,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           port: ${{ secrets.ORACLE_PORT }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          source: "artifact/*,deploy/release.sh"
+          source: "artifact/*,deploy/release.sh,backend/.env"
           target: "/tmp/weather-deploy-${{ steps.timestamp.outputs.timestamp }}"
           strip_components: 1
 
