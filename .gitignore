@@ -1,2 +1,12 @@
 ﻿weather-app/
 weather-app/
+artifact_manual/
+node_modules/
+nginx-api.conf
+weather-backend.service
+release.sh
+transport.ps1
+manual_deploy.ps1
+.env
+.env.example
+.gitignore
