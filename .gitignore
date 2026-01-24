@@ -11,6 +11,9 @@ node_modules/
 dist/
 build/
 
+# Deployment files (keep private)
+deploy/
+
 # Deployment artifacts (local only)
 artifact_manual/
 
@@ -28,3 +31,4 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
