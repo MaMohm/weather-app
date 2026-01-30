@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -20,30 +22,38 @@ app.set('trust proxy', 1);
 // Security Middleware
 app.use(helmet());
 
-// Rate Limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 300, // Increased to 300 to accommodate public usage (approx 20 req/min)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    message: { error: 'Too many requests, please try again later.' }
+// STRICT Global Rate Limiting (OpenWeather Free Tier Protection)
+// Limit to 45 requests per minute to be safe (Limit is 60)
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 45, // Strict limit to protect free tier
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Global API rate limit exceeded. Please try again in a minute.' },
+    keyGenerator: (req) => 'global-weather-api-rate-limit' // Global bucket for all users
 });
 
-// Apply rate limiting to all requests
-app.use('/api/', limiter);
+// Apply global rate limiting to weather endpoint
+app.use('/api/weather', globalLimiter);
+
+// Auth Rate Limit
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // Limit login attempts
+    message: { error: 'Too many login attempts, please try again later.' }
+});
 
 // CORS Configuration
-const allowedOrigins = [
-    'https://mamohm.github.io',
-    'http://localhost:5173',
-    'http://localhost:3000' // For local testing
-];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',');
 
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
+        if (allowedOrigins.indexOf(origin) === -1 && !origin.startsWith('http://localhost')) {
+            // Fallback for localhost dynamic ports if needed, otherwise strict
+            if (process.env.NODE_ENV === 'development') return callback(null, true);
+
             const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }
@@ -53,6 +63,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Google Auth Client
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Logging Middleware
 app.use((req, res, next) => {
@@ -64,6 +77,44 @@ app.use((req, res, next) => {
 app.get('/api/health', (req: Request, res: Response) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Google Auth Endpoint
+app.post('/api/auth/google', authLimiter, async (req: Request, res: Response) => {
+    try {
+        const { credential } = req.body;
+        if (!credential) {
+            return res.status(400).json({ error: 'Missing credential' });
+        }
+
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        if (!payload) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+
+        const { sub, email, name, picture } = payload;
+
+        // Create simple user object (In real app, save to DB)
+        const user = { id: sub, email, name, picture };
+
+        // Sign JWT
+        const token = jwt.sign(
+            user,
+            process.env.JWT_SECRET || 'fallback-secret',
+            { expiresIn: '7d' }
+        );
+
+        res.json({ token, user });
+    } catch (error: any) {
+        console.error('Auth Error:', error.message);
+        res.status(401).json({ error: 'Authentication failed' });
+    }
+});
+
 
 // Geocoding API Endpoint
 app.get('/api/geocode', async (req: Request, res: Response) => {
