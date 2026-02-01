@@ -26,11 +26,11 @@ app.use(helmet());
 // Limit to 45 requests per minute to be safe (Limit is 60)
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 45, // Strict limit to protect free tier
+    max: 100, // Limit per IP (Standard for Open-Meteo is 600/min approx)
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Global API rate limit exceeded. Please try again in a minute.' },
-    keyGenerator: (req) => 'global-weather-api-rate-limit' // Global bucket for all users
+    message: { error: 'Too many requests, please try again later.' },
+    keyGenerator: (req) => req.ip || '127.0.0.1' // Rate limit per IP address
 });
 
 // Apply global rate limiting to weather endpoint
