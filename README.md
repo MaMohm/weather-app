@@ -94,4 +94,4 @@ This project was audited for common web vulnerabilities:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-*Developed with ❤️ by Marwan.*
+*Developed with ❤️ by Marwan M.*
