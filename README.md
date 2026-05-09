@@ -88,10 +88,6 @@ This project was audited for common web vulnerabilities:
 - **✅ Sensitive Data:** No `.env` files or secrets are committed to the repository.
 - **✅ Bruteforce/Spam:** Mitigated via IP-based Rate Limiting.
 
----
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 *Developed with ❤️ by Marwan M.*
